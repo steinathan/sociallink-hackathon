@@ -1,0 +1,57 @@
+{
+  "name": "SocialLink — Social Discovery & Specialized Consultation",
+  "short_name": "SocialLink",
+  "description": "Nigeria's most considered social discovery and specialized consultation platform. Verified Consultants, escrowed retainers, and considered sessions.",
+  "start_url": "/dashboard?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#F5F1EA",
+  "theme_color": "#C45F4F",
+  "orientation": "portrait-primary",
+  "lang": "en-NG",
+  "dir": "ltr",
+  "categories": ["social", "lifestyle", "business"],
+  "icons": [
+    {
+      "src": "/icons/web-app-manifest-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icons/web-app-manifest-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icons/favicon-96x96.png",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Explore",
+      "short_name": "Explore",
+      "description": "Browse verified Consultants",
+      "url": "/explore",
+      "icons": [{ "src": "/icons/favicon-96x96.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "My Bookings",
+      "short_name": "Bookings",
+      "description": "Active sessions and history",
+      "url": "/bookings",
+      "icons": [{ "src": "/icons/favicon-96x96.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Wallet",
+      "short_name": "Wallet",
+      "description": "Top up or withdraw",
+      "url": "/wallet",
+      "icons": [{ "src": "/icons/favicon-96x96.png", "sizes": "96x96" }]
+    }
+  ]
+}

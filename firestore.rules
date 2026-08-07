@@ -1,0 +1,147 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /stores/{storeNs} {
+      function isAuthenticated() {
+        return request.auth != null;
+      }
+
+      function isOwner(uid) {
+        return isAuthenticated() && request.auth.uid == uid;
+      }
+
+      function userPath(uid) {
+        return /databases/$(database)/documents/stores/$(storeNs)/users/$(uid);
+      }
+
+      function bookingPath(bookingId) {
+        return /databases/$(database)/documents/stores/$(storeNs)/bookings/$(bookingId);
+      }
+
+      function isAdmin() {
+        return isAuthenticated() &&
+          exists(userPath(request.auth.uid)) &&
+          get(userPath(request.auth.uid)).data.role == "ADMIN";
+      }
+
+      function isBookingParticipant(bookingId) {
+        let path = bookingPath(bookingId);
+        return isAuthenticated() &&
+          exists(path) &&
+          (request.auth.uid == get(path).data.memberId || request.auth.uid == get(path).data.consultantId);
+      }
+
+      match /users/{uid} {
+        allow read: if isOwner(uid) || isAdmin();
+        allow create: if false;
+        allow update: if isOwner(uid) || isAdmin();
+        allow delete: if isAdmin();
+
+        match /notifications/{notifId} {
+          allow read: if isOwner(uid);
+          allow update: if isOwner(uid) &&
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+          allow create, delete: if false;
+        }
+      }
+
+      match /profiles/{uid} {
+        allow read: if true;
+        allow create: if false;
+        allow update: if isOwner(uid) || isAdmin();
+        allow delete: if isAdmin();
+      }
+
+      match /meta/{docId} {
+        allow read, write: if false; // server-only — Cloud Function event listener
+      }
+
+      match /bookings/{bookingId} {
+        allow read: if isAuthenticated() && (
+          request.auth.uid == resource.data.memberId ||
+          request.auth.uid == resource.data.consultantId ||
+          isAdmin()
+        );
+
+        allow create: if false;
+        allow update: if false;
+        allow delete: if false;
+      }
+
+      match /chats/{chatId} {
+        allow read: if isAuthenticated() && (
+          request.auth.uid == resource.data.memberId ||
+          request.auth.uid == resource.data.consultantId
+        );
+        allow create: if false;
+        allow update: if false;
+        allow delete: if false;
+
+        match /messages/{messageId} {
+          allow read: if isAuthenticated() && (
+            request.auth.uid == get(/databases/$(database)/documents/stores/$(storeNs)/chats/$(chatId)).data.memberId ||
+            request.auth.uid == get(/databases/$(database)/documents/stores/$(storeNs)/chats/$(chatId)).data.consultantId
+          );
+
+          allow create: if isAuthenticated() && (
+            request.auth.uid == get(/databases/$(database)/documents/stores/$(storeNs)/chats/$(chatId)).data.memberId ||
+            request.auth.uid == get(/databases/$(database)/documents/stores/$(storeNs)/chats/$(chatId)).data.consultantId
+          ) && get(/databases/$(database)/documents/stores/$(storeNs)/chats/$(chatId)).data.isActive == true;
+
+          allow update: if false;
+          allow delete: if false;
+        }
+      }
+
+      match /reports/{reportId} {
+        allow read: if isAdmin() || isOwner(resource.data.reporterId);
+        allow create: if false;
+        allow update: if isAdmin();
+        allow delete: if false;
+      }
+
+      match /wallet_transactions/{txId} {
+        allow read: if isAuthenticated() && request.auth.uid == resource.data.userId;
+        allow create: if false;
+        allow update: if false;
+        allow delete: if false;
+      }
+
+      match /reviews/{reviewId} {
+        allow read: if isAuthenticated();
+        allow create: if false;
+        allow update: if false;
+        allow delete: if false;
+      }
+
+      match /payouts/{payoutId} {
+        allow read: if (isAuthenticated() && request.auth.uid == resource.data.consultantId) || isAdmin();
+        allow create: if false;
+        allow update: if false;
+        allow delete: if false;
+      }
+
+      match /platform/{docId} {
+        allow read: if isAdmin();
+        allow write: if false;
+      }
+
+      match /pending_transactions/{refId} {
+        allow read: if false;
+        allow write: if false;
+      }
+
+      match /auth_otps/{docId} {
+        allow read, write: if false;
+      }
+
+      match /auth_phone_index/{docId} {
+        allow read, write: if false;
+      }
+
+      match /auth_wallet_nonces/{address} {
+        allow read, write: if false;
+      }
+    }
+  }
+}
