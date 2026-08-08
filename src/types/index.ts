@@ -93,6 +93,7 @@ export interface Booking {
     price: number;
   }>;
   amountLocked: number; // in Naira (fiat path)
+  currency?: "USDC" | "NGN"; // explicit currency chosen at request time
   status: BookingStatus;
   chatId?: string;
   memberConfirmedComplete?: boolean;
@@ -193,7 +194,9 @@ export type TransactionType =
   | "CRYPTO_DEPOSIT"
   | "CRYPTO_WITHDRAW"
   | "CRYPTO_ESCROW_LOCK"
-  | "CRYPTO_ESCROW_RELEASE";
+  | "CRYPTO_ESCROW_RELEASE"
+  | "CRYPTO_ESCROW_DISPUTE"
+  | "CRYPTO_REFUND";
 
 export interface WalletTransaction {
   transactionId: string;

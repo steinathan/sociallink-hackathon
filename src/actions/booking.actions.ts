@@ -1,7 +1,8 @@
 "use server";
 
 import { adminDb, adminAuth, adminMessaging, adminCollection } from "@/lib/firebase-admin";
-import { FieldValue, Timestamp } from "firebase-admin/firestore";
+import { FieldValue } from "firebase-admin/firestore";
+import type { Address } from "viem";
 import { BookingStatus } from "@/types";
 import {
   createBookingEscrow,
@@ -103,7 +104,8 @@ async function sendNotification(
 export async function requestBooking(
   idToken: string,
   consultantId: string,
-  selectedServiceIds: string[]
+  selectedServiceIds: string[],
+  currency: "USDC" | "NGN" = "NGN"
 ): Promise<{ success: boolean; bookingId?: string; error?: string }> {
   try {
     const decoded = await adminAuth.verifyIdToken(idToken);
@@ -123,10 +125,10 @@ export async function requestBooking(
 
     const profileData = profileDoc.data()!;
     const availableServices = (profileData.services as any[]) || [];
-    
+
     // Filter and validate selected services
     const selectedServices = availableServices.filter(s => selectedServiceIds.includes(s.id));
-    
+
     if (selectedServices.length === 0) {
       return { success: false, error: "Please select at least one service." };
     }
@@ -139,6 +141,28 @@ export async function requestBooking(
 
     const bookingId = adminCollection("bookings").doc().id;
 
+    // Pre-flight for USDC: need member's wallet + consultant address before the txn.
+    // (External chain reads must happen OUTSIDE the Firestore txn — same pattern as acceptBooking.)
+    let memberAddr: Address | null = null;
+    let consultantAddr: Address | null = null;
+    if (currency === "USDC") {
+      if (!hasEscrowConfig()) {
+        return { success: false, error: "Onchain escrow not configured." };
+      }
+      [memberAddr, consultantAddr] = await Promise.all([
+        fetchUserWalletAddress(memberId),
+        fetchUserWalletAddress(consultantId),
+      ]);
+      if (!memberAddr) {
+        return { success: false, error: "Connect OKX Wallet to pay with USDC." };
+      }
+      if (!consultantAddr) {
+        return { success: false, error: "Consultant has no wallet bound." };
+      }
+    }
+
+    const usdcAmount = nairaToUsdcUnits(totalAmount);
+
     await adminDb.runTransaction(async (tx) => {
       const memberRef = adminCollection("users").doc(memberId);
       const memberSnap = await tx.get(memberRef);
@@ -148,20 +172,36 @@ export async function requestBooking(
       const wallet = memberSnap.data()!.wallet as {
         availableBalance: number;
         escrowBalance: number;
+        usdcBalance?: number;
       };
 
-      if (wallet.availableBalance < totalAmount) {
-        throw new Error(
-          `Insufficient balance. You need ₦${totalAmount.toLocaleString()} but have ₦${wallet.availableBalance.toLocaleString()}.`
-        );
+      if (currency === "USDC") {
+        const usdcBal = wallet.usdcBalance ?? 0;
+        const usdcFloat = Number(usdcAmount) / 10 ** 6;
+        if (usdcBal < usdcFloat) {
+          throw new Error(
+            `Insufficient USDC balance. You need ${usdcFloat.toFixed(2)} USDC but have ${usdcBal.toFixed(2)} USDC.`
+          );
+        }
+        // Decrement USDC balance (cash leg); onchain lock happens right after this txn.
+        tx.update(memberRef, {
+          "wallet.usdcBalance": FieldValue.increment(-usdcFloat),
+          "wallet.usdcBalanceUpdatedAt": FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+      } else {
+        if (wallet.availableBalance < totalAmount) {
+          throw new Error(
+            `Insufficient balance. You need ₦${totalAmount.toLocaleString()} but have ₦${wallet.availableBalance.toLocaleString()}.`
+          );
+        }
+        // Deduct from availableBalance, add to escrowBalance
+        tx.update(memberRef, {
+          "wallet.availableBalance": FieldValue.increment(-totalAmount),
+          "wallet.escrowBalance": FieldValue.increment(totalAmount),
+          updatedAt: FieldValue.serverTimestamp(),
+        });
       }
-
-      // Deduct from availableBalance, add to escrowBalance
-      tx.update(memberRef, {
-        "wallet.availableBalance": FieldValue.increment(-totalAmount),
-        "wallet.escrowBalance": FieldValue.increment(totalAmount),
-        updatedAt: FieldValue.serverTimestamp(),
-      });
 
       // Create booking
       const bookingRef = adminCollection("bookings").doc(bookingId);
@@ -175,6 +215,7 @@ export async function requestBooking(
           price: s.price
         })),
         amountLocked: totalAmount,
+        currency,
         status: "REQUESTED",
         createdAt: FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
@@ -184,13 +225,43 @@ export async function requestBooking(
       const txRef = adminCollection("wallet_transactions").doc();
       tx.set(txRef, {
         userId: memberId,
-        type: "ESCROW_LOCK",
-        amount: totalAmount,
+        type: currency === "USDC" ? "CRYPTO_ESCROW_LOCK" : "ESCROW_LOCK",
+        amount: currency === "USDC" ? Number(usdcAmount) / 10 ** 6 : totalAmount,
         bookingId,
-        description: `Escrow locked for ${selectedServices.length} services`,
+        description:
+          currency === "USDC"
+            ? `USDC escrow locked on X Layer for ${selectedServices.length} services`
+            : `Escrow locked for ${selectedServices.length} services`,
         createdAt: FieldValue.serverTimestamp(),
       });
     });
+
+    // Onchain lock — synchronous when user picked USDC (txn already debited their balance).
+    // For NGN we still stage a parallel onchain escrow if both parties have wallets.
+    if (currency === "USDC") {
+      try {
+        const { escrowId, txHash } = await createBookingEscrow(
+          bookingId,
+          consultantAddr!,
+          usdcAmount
+        );
+        await adminCollection("bookings").doc(bookingId).update({
+          escrowId,
+          escrowTxHash: txHash,
+          escrowChain: "xlayer-testnet" as const,
+          usdcAmountLocked: usdcAmount.toString(),
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+      } catch (err) {
+        console.error("[escrow] USDC onchain lock failed:", err);
+        return {
+          success: false,
+          error: `Onchain escrow lock failed: ${err instanceof Error ? err.message : "unknown"}. Booking rolled back — try Paystack instead.`,
+        };
+      }
+    } else {
+      await maybeCreateOnchainEscrow(bookingId, memberId, consultantId, totalAmount);
+    }
 
     // Send notifications
     await Promise.all([
@@ -198,20 +269,21 @@ export async function requestBooking(
         consultantId,
         "BOOKING_REQUESTED",
         "New Session Request",
-        `A member has requested ${selectedServices.length} services. Total: ₦${totalAmount.toLocaleString()}`,
+        currency === "USDC"
+          ? `A member has requested ${selectedServices.length} services. Total: ${(Number(usdcAmount) / 10 ** 6).toFixed(2)} USDC (onchain).`
+          : `A member has requested ${selectedServices.length} services. Total: ₦${totalAmount.toLocaleString()}`,
         bookingId
       ),
       sendNotification(
         memberId,
         "BOOKING_REQUESTED",
         "Session Request Sent",
-        `Your request has been sent. ₦${totalAmount.toLocaleString()} is held in escrow.`,
+        currency === "USDC"
+          ? `Your request has been sent. ${(Number(usdcAmount) / 10 ** 6).toFixed(2)} USDC is locked in our onchain escrow on X Layer.`
+          : `Your request has been sent. ₦${totalAmount.toLocaleString()} is held in escrow.`,
         bookingId
       ),
     ]);
-
-    // Parallel: stage onchain escrow if both parties have wallets.
-    await maybeCreateOnchainEscrow(bookingId, memberId, consultantId, totalAmount);
 
     return { success: true, bookingId };
   } catch (err: unknown) {
@@ -466,6 +538,11 @@ export async function releaseFunds(
       }
     }
 
+    const isUsdc = !!preBooking.usdcAmountLocked;
+    const usdcFloat = isUsdc
+      ? Number(BigInt(preBooking.usdcAmountLocked!)) / 10 ** 6
+      : 0;
+
     await adminDb.runTransaction(async (tx) => {
       const bookingRef = adminCollection("bookings").doc(bookingId);
       const snap = await tx.get(bookingRef);
@@ -486,27 +563,34 @@ export async function releaseFunds(
       const consultantRef = adminCollection("users").doc(booking.consultantId);
       const platformRef = adminCollection("platform").doc("wallet");
 
-      // Deduct from member's escrowBalance
-      tx.update(memberRef, {
-        "wallet.escrowBalance": FieldValue.increment(-totalAmount),
-        updatedAt: FieldValue.serverTimestamp(),
-      });
-
-      // Credit consultant's availableBalance (85%)
-      tx.update(consultantRef, {
-        "wallet.availableBalance": FieldValue.increment(consultantPayout),
-        updatedAt: FieldValue.serverTimestamp(),
-      });
-
-      // Credit platform wallet (15%)
-      tx.set(
-        platformRef,
-        {
-          totalCommissionEarned: FieldValue.increment(platformFee),
+      if (isUsdc) {
+        // Onchain release already paid out the consultant via the Escrow contract.
+        // Mirror the credit in their cached usdcBalance so the UI reflects it.
+        // ponytail: USDC release skips the 15% fiat commission split — flat payout to consultant.
+        tx.update(consultantRef, {
+          "wallet.usdcBalance": FieldValue.increment(usdcFloat),
+          "wallet.usdcBalanceUpdatedAt": FieldValue.serverTimestamp(),
           updatedAt: FieldValue.serverTimestamp(),
-        },
-        { merge: true }
-      );
+        });
+      } else {
+        // Fiat release: deduct from member's escrowBalance, credit consultant + platform.
+        tx.update(memberRef, {
+          "wallet.escrowBalance": FieldValue.increment(-totalAmount),
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+        tx.update(consultantRef, {
+          "wallet.availableBalance": FieldValue.increment(consultantPayout),
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+        tx.set(
+          platformRef,
+          {
+            totalCommissionEarned: FieldValue.increment(platformFee),
+            updatedAt: FieldValue.serverTimestamp(),
+          },
+          { merge: true }
+        );
+      }
 
       // Update booking
       tx.update(bookingRef, {
@@ -522,36 +606,48 @@ export async function releaseFunds(
         ...(escrowTxHash ? { escrowTxHash, usdcReleasedAt: FieldValue.serverTimestamp() } : {}),
       });
 
-      // Record transactions
-      const tx1Ref = adminCollection("wallet_transactions").doc();
-      tx.set(tx1Ref, {
-        userId: memberId,
-        type: "ESCROW_RELEASE",
-        amount: totalAmount,
-        bookingId,
-        description: "Escrow released on session completion",
-        createdAt: FieldValue.serverTimestamp(),
-      });
+      if (isUsdc) {
+        const txOnchainRef = adminCollection("wallet_transactions").doc();
+        tx.set(txOnchainRef, {
+          userId: booking.consultantId,
+          type: "CRYPTO_ESCROW_RELEASE",
+          amount: usdcFloat,
+          bookingId,
+          description: `USDC session payout from X Layer escrow`,
+          createdAt: FieldValue.serverTimestamp(),
+        });
+      } else {
+        // Record transactions (fiat path)
+        const tx1Ref = adminCollection("wallet_transactions").doc();
+        tx.set(tx1Ref, {
+          userId: memberId,
+          type: "ESCROW_RELEASE",
+          amount: totalAmount,
+          bookingId,
+          description: "Escrow released on session completion",
+          createdAt: FieldValue.serverTimestamp(),
+        });
 
-      const tx2Ref = adminCollection("wallet_transactions").doc();
-      tx.set(tx2Ref, {
-        userId: booking.consultantId,
-        type: "ESCROW_RELEASE",
-        amount: consultantPayout,
-        bookingId,
-        description: `Session payout (85% of ₦${totalAmount.toLocaleString()})`,
-        createdAt: FieldValue.serverTimestamp(),
-      });
+        const tx2Ref = adminCollection("wallet_transactions").doc();
+        tx.set(tx2Ref, {
+          userId: booking.consultantId,
+          type: "ESCROW_RELEASE",
+          amount: consultantPayout,
+          bookingId,
+          description: `Session payout (85% of ₦${totalAmount.toLocaleString()})`,
+          createdAt: FieldValue.serverTimestamp(),
+        });
 
-      const tx3Ref = adminCollection("wallet_transactions").doc();
-      tx.set(tx3Ref, {
-        userId: "PLATFORM",
-        type: "COMMISSION",
-        amount: platformFee,
-        bookingId,
-        description: `Platform commission (15% of ₦${totalAmount.toLocaleString()})`,
-        createdAt: FieldValue.serverTimestamp(),
-      });
+        const tx3Ref = adminCollection("wallet_transactions").doc();
+        tx.set(tx3Ref, {
+          userId: "PLATFORM",
+          type: "COMMISSION",
+          amount: platformFee,
+          bookingId,
+          description: `Platform commission (15% of ₦${totalAmount.toLocaleString()})`,
+          createdAt: FieldValue.serverTimestamp(),
+        });
+      }
 
       // Close chat
       if (booking.chatId) {
@@ -569,7 +665,9 @@ export async function releaseFunds(
         booking.consultantId,
         "FUNDS_RELEASED",
         "Funds Released!",
-        `₦${(booking.receipt?.consultantPayout ?? 0).toLocaleString()} has been added to your wallet.`,
+        isUsdc
+          ? `${usdcFloat.toFixed(2)} USDC has been credited to your wallet.`
+          : `₦${(booking.receipt?.consultantPayout ?? 0).toLocaleString()} has been added to your wallet.`,
         bookingId
       ),
       sendNotification(
@@ -641,12 +739,28 @@ export async function disputeBooking(
           ? booking.consultantId
           : booking.memberId;
 
+      const isUsdc = !!booking.usdcAmountLocked;
+
       // Update booking status to DISPUTED — freezes escrow
       tx.update(bookingRef, {
         status: "DISPUTED" as BookingStatus,
         updatedAt: FieldValue.serverTimestamp(),
         ...(escrowTxHash ? { escrowTxHash } : {}),
       });
+
+      // Record onchain dispute marker for audit trail. Funds stay frozen in the
+      // Solidity escrow until the AI resolver calls resolveDispute() (Tier 3).
+      if (isUsdc) {
+        const txOnchainRef = adminCollection("wallet_transactions").doc();
+        tx.set(txOnchainRef, {
+          userId: reporterId,
+          type: "CRYPTO_ESCROW_DISPUTE",
+          amount: 0,
+          bookingId,
+          description: `Onchain escrow disputed on X Layer — frozen pending AI resolution`,
+          createdAt: FieldValue.serverTimestamp(),
+        });
+      }
 
       // Create report document
       const reportRef = adminCollection("reports").doc();
