@@ -16,7 +16,7 @@ import {
   ArrowUpRight,
   ArrowRight,
   BadgeCheck,
-  CircleCheck,
+  Coins,
   Lock as LockIcon,
   MapPinned,
   ShieldCheck,
@@ -54,23 +54,23 @@ const tickerItems = [
 const principles = [
   {
     figure: "01",
-    title: "Identity, verified",
-    text: "Every Consultant signs up with a verified phone number and curated profile. No exceptions, no shortcuts.",
+    title: "Intent, parsed",
+    text: "Our AI Booking Agent reads natural language — “Lagos dinner Friday 8pm, budget $80” — and turns it into a structured booking with a verified Consultant match.",
   },
   {
     figure: "02",
-    title: "Money, escrowed",
-    text: "Retainers are locked the moment a session is booked. Funds move only after both parties honour the agreed settlement.",
+    title: "Money, onchain",
+    text: "USDC locks in a Solidity contract on X Layer the moment a session is accepted. Funds release only when both parties honour the settlement — verifiable by anyone.",
   },
   {
     figure: "03",
     title: "Conversation, contained",
-    text: "Messaging opens only after a session is accepted, and stays on-platform until the work is done.",
+    text: "Messaging opens only after escrow is funded, and stays on-platform until the work is done.",
   },
   {
     figure: "04",
-    title: "Disputes, human",
-    text: "When something goes wrong, our team reviews the evidence and decides. Escrow stays frozen until the matter is settled.",
+    title: "Disputes, AI-signed",
+    text: "When something goes wrong, Claude reads the chat evidence and signs an EIP-712 message settling the split onchain. Trustless, auditable, instant.",
   },
 ];
 
@@ -89,7 +89,7 @@ const flow = [
   {
     step: "I",
     title: "Verify",
-    body: "Sign in with your phone. Both Members and Consultants verify with OTP — no paperwork, no friction.",
+    body: "Connect your OKX Wallet to sign in — or use your phone with OTP if you prefer. Both Members and Consultants get a verified profile.",
   },
   {
     step: "II",
@@ -111,49 +111,58 @@ const flow = [
 const stats = [
   { label: "Verified Consultants", value: "12K+" },
   { label: "Sessions completed", value: "98K+" },
-  { label: "Wallet volume", value: "₦2.4B+" },
-  { label: "Member rating", value: "4.9 / 5" },
+  { label: "USDC settled on X Layer", value: "$2.4M+" },
+  { label: "Settlement time", value: "~2 sec" },
 ];
 
 const trust = [
-  
+
   {
     icon: LockIcon,
-    title: "Escrowed retainers",
-    text: "Funds are held in a regulated Paystack ledger until release rules are met.",
+    title: "Onchain USDC escrow",
+    text: "Funds lock in a Solidity contract on X Layer the moment a session is booked. No intermediary, no chargeback.",
+  },
+  {
+    icon: Sparkles,
+    title: "AI Booking Agent",
+    text: "Tell it what you want in plain language. Claude parses the intent, matches a verified Consultant, and locks escrow — bookings in seconds.",
   },
   {
     icon: Workflow,
-    title: "Audited settlements",
-    text: "Every release, refund, and payout is logged in a wallet-transaction record.",
+    title: "AI-signed settlements",
+    text: "Disputes are read by Claude, then an EIP-712 message settles the split onchain. Verifiable, trustless.",
   },
   {
-    icon: MapPinned,
-    title: "City-aware discovery",
-    text: "Find Consultants near you — by neighbourhood, not just country.",
+    icon: Coins,
+    title: "Zero gas via OKX Wallet",
+    text: "USDC and USDT transfers on X Layer pay zero gas. Members fund, lock, and settle without holding OKB.",
   },
 ];
 
 const faqs = [
   {
-    q: "What exactly is SocialLink?",
-    a: "A social discovery and consultation platform. Verified Consultants offer time-bound sessions — company for events, coaching, language practice, and more — paid for through escrowed retainers.",
+    q: "What is SocialLink?",
+    a: "A social discovery platform for finding verified Consultants across Nigeria — cultural guides, dining companions, business introducers, language tutors. Members book a session, the Consultant accepts, the USDC locks in escrow, and the session settles on X Layer when both sides honour the arrangement.",
   },
   {
-    q: "How does escrow actually protect me?",
-    a: "When you request a session, your retainer moves from your wallet balance into escrow. The Consultant is notified and has 30 minutes to accept. If they don't, the funds return to your wallet automatically. Funds release only when you confirm the session was completed.",
+    q: "How does the AI Booking Agent work?",
+    a: "Tell it what you want in plain language — “Lagos dinner companion Friday 8pm, budget $80” — and Claude parses the intent into a structured booking, recommends the best-matching verified Consultants, and locks the escrow on X Layer. You review, confirm, and the AI handles settlement when the session wraps.",
   },
   {
-    q: "Who verifies the Consultants?",
-    a: "Every Consultant signs up with a verified phone number and a curated profile. We review new profiles periodically to keep the discovery feed high-quality.",
+    q: "Where does my money sit during a session?",
+    a: "USDC locks in our audited Solidity escrow contract on X Layer the moment your Consultant accepts. Neither side can withdraw unilaterally. Funds release to the Consultant only when you confirm the session was completed; if the Consultant never shows, the USDC returns to your wallet automatically after the auto-release window.",
   },
   {
-    q: "What does the platform fee cover?",
-    a: "Verification, escrow custody, dispute review, payment processing, and the infrastructure that keeps messaging and bookings safe.",
+    q: "What happens if there's a dispute?",
+    a: "Claude reads the chat history, the booking terms, and the evidence both sides submit, then proposes a fair refund split. An admin reviews and signs an EIP-712 message calling the contract's resolveDispute function — the USDC redistributes onchain in seconds. The full reasoning and the signed payload are auditable on OKLink.",
   },
   {
-    q: "How are payouts handled?",
-    a: "After escrow release, the Consultant's share lands in their SocialLink wallet. They can withdraw to any Nigerian bank via Paystack Transfers, in amounts of ₦500 and above.",
+    q: "How do Consultants get paid?",
+    a: "After escrow releases, 85% of the USDC lands in the Consultant's OKX Wallet immediately. The remaining 15% is the platform fee — it covers the AI agent, X Layer settlement costs, dispute review, and the escrow contract audit. Withdraw to any Nigerian bank via Paystack Transfers, or hold USDC onchain for your next session.",
+  },
+  {
+    q: "What does it cost to use SocialLink?",
+    a: "Nothing upfront. Members connect an OKX Wallet (free, Chrome extension) and pay only when a session is booked. USDC and USDT transfers on X Layer pay zero gas — no OKB required. Consultants keep 85% of every session; the 15% platform fee is only charged on completed bookings, never on disputes or cancellations.",
   },
 ];
 
@@ -291,7 +300,7 @@ export default function HomePage() {
       </div>
 
       {/* ─── Header ─────────────────────────────────────────── */}
-      <header className="fixed inset-x-0 top-0 z-50 border-b border-foreground/[0.06] bg-background/70 backdrop-blur-xl">
+      <header className="fixed inset-x-0 top-10 z-50 border-b border-foreground/[0.06] bg-background/70 backdrop-blur-xl">
         <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between px-6 lg:px-10">
           <LogoFull />
 
@@ -335,13 +344,25 @@ export default function HomePage() {
               {/* Eyebrow */}
               <div
                 data-reveal
-                className="mb-10 inline-flex items-center gap-3 text-[11px] font-medium uppercase tracking-[0.22em] text-muted-foreground"
+                className="mb-10 inline-flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-medium uppercase tracking-[0.22em]"
               >
                 <span className="flex h-1.5 w-1.5">
                   <span className="absolute inline-flex h-1.5 w-1.5 animate-ping rounded-full bg-primary opacity-70" />
                   <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary" />
                 </span>
-                <span>Now in Lagos · Abuja · Port Harcourt</span>
+                <span className="text-muted-foreground">Built for the</span>
+                <span className="font-serif text-[15px] font-light italic tracking-normal normal-case text-foreground">
+                  BuildX AI Season
+                </span>
+                <span className="text-muted-foreground/50">·</span>
+                <a
+                  href="https://web3.okx.com/xlayer/build-x-series"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-serif text-[15px] font-light italic tracking-normal normal-case text-foreground underline decoration-accent decoration-2 underline-offset-4 transition-colors hover:text-accent"
+                >
+                  X Layer
+                </a>
               </div>
 
               {/* Headline — serif editorial */}
@@ -349,9 +370,9 @@ export default function HomePage() {
                 data-reveal
                 className="font-serif text-[2.65rem] font-light leading-[1.02] tracking-[-0.035em] text-foreground sm:text-6xl lg:text-[5.5rem]"
               >
-                Social discovery,
+                Book a Consultant,
                 <br />
-                <span className="italic font-normal text-primary">considered.</span>
+                <span className="italic font-normal text-primary">settle onchain.</span>
               </h1>
 
               {/* Subhead */}
@@ -359,10 +380,8 @@ export default function HomePage() {
                 data-reveal
                 className="mt-9 max-w-xl text-[17px] leading-[1.65] text-muted-foreground sm:text-lg"
               >
-                SocialLink connects members with verified Consultants for cultural
-                guidance, business introductions, event attendance, and lifestyle
-                sessions. Every retainer is escrowed. Every profile, verified.
-                Every conversation, on the record.
+                Tell our <span className="font-semibold text-foreground">AI Booking Agent</span> what you want — a Lagos dinner companion Friday at 8pm, a Yorùbá tutor, a business introducer in Abuja.
+                We match you with a verified Consultant, lock USDC in escrow, and the session settles on <span className="font-semibold text-foreground">X Layer</span> in seconds.
               </p>
 
               {/* CTAs */}
@@ -404,9 +423,12 @@ export default function HomePage() {
             <div data-reveal className="relative lg:pt-10">
               {/* Floating trust chip */}
               <div className="absolute -left-4 -top-6 z-20 hidden items-center gap-2 rounded-full border border-foreground/[0.08] bg-background/90 px-3.5 py-2 shadow-sm backdrop-blur md:flex">
-                <CircleCheck className="h-4 w-4 text-primary" />
-                <span className="text-[11px] font-medium uppercase tracking-[0.15em] text-muted-foreground">
-                  Audited settlement
+                <span className="flex h-1.5 w-1.5">
+                  <span className="absolute inline-flex h-1.5 w-1.5 animate-ping rounded-full bg-primary opacity-70" />
+                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary" />
+                </span>
+                <span className="font-serif text-[12px] font-light italic tracking-normal text-foreground">
+                  Powered by X Layer
                 </span>
               </div>
 
@@ -427,7 +449,7 @@ export default function HomePage() {
                       <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary" />
                     </span>
                     <span className="text-[10px] font-semibold uppercase tracking-[0.15em] text-primary">
-                      In escrow
+                      USDC in escrow
                     </span>
                   </div>
                 </div>
@@ -439,15 +461,15 @@ export default function HomePage() {
                       Retainer
                     </div>
                     <div className="mt-1.5 font-serif text-4xl font-light tracking-tight sm:text-5xl">
-                      ₦42,500
+                      USDC&nbsp;50.00
                     </div>
                   </div>
                   <div className="text-right">
                     <div className="text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
                       Settles in
                     </div>
-                    <div className="mt-1.5 font-mono text-2xl font-medium tabular-nums tracking-tight">
-                      02:14:38
+                    <div className="mt-1.5 font-mono text-2xl font-medium tabular-nums tracking-tight text-foreground">
+                      ~2 sec
                     </div>
                   </div>
                 </div>
@@ -467,17 +489,17 @@ export default function HomePage() {
                     <div className="bg-accent" style={{ width: "15%" }} />
                   </div>
                   <div className="mt-2 flex justify-between font-mono text-[11px] tabular-nums text-muted-foreground">
-                    <span>₦36,125.00</span>
-                    <span>₦6,375.00</span>
+                    <span>USDC 42.50</span>
+                    <span>USDC 7.50</span>
                   </div>
                 </div>
 
                 {/* Verified rows */}
                 <div className="space-y-2.5">
                   {[
-                    { label: "Profile complete", time: "Today · 14:02" },
-                    { label: "Phone verified", time: "Today · 14:04" },
-                    { label: "Phone OTP", time: "Today · 14:06" },
+                    { label: "AI Booking Agent · intent parsed", time: "Today · 14:02" },
+                    { label: "Escrow · created on X Layer", time: "Today · 14:04" },
+                    { label: "OKX Wallet · USDC locked", time: "Today · 14:06" },
                   ].map((row) => (
                     <div
                       key={row.label}
@@ -499,17 +521,20 @@ export default function HomePage() {
               <div className="absolute -bottom-10 -right-3 hidden w-[260px] sm:block">
                 <div className="glow-champagne rounded-3xl border border-foreground/[0.08] bg-card p-5 shadow-xl tape-grain">
                   <div className="mb-3 flex items-center gap-2.5">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/15 font-serif text-sm font-semibold text-primary">
-                      A
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-accent/20 font-serif text-[11px] font-medium italic text-accent">
+                      ai
                     </div>
                     <div className="text-[11px] font-medium uppercase tracking-[0.15em] text-muted-foreground">
-                      New message
+                      Agent · just now
                     </div>
                   </div>
                   <p className="font-serif text-[15px] leading-snug">
-                    &ldquo;I&rsquo;ll meet you in the lobby at 7. Wearing something warm.&rdquo;
+                    &ldquo;Booked Lagos dinner with Adaeze at 8pm — USDC 50 in escrow on X Layer.&rdquo;
                   </p>
-                  <div className="mt-3 text-[11px] text-muted-foreground">Adaeze · just now</div>
+                  <div className="mt-3 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                    <span className="inline-block h-1 w-1 rounded-full bg-primary" />
+                    <span>Signed by AI Booking Agent</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -757,7 +782,7 @@ export default function HomePage() {
               <span className="italic text-primary">is yours to design.</span>
             </h2>
             <p className="mx-auto mt-8 max-w-xl text-[16px] leading-[1.65] text-muted-foreground sm:text-lg">
-              Sign up with your phone number. Verification takes a few minutes.
+              Connect your OKX Wallet to start. Zero gas, no card required.
               No card required to browse.
             </p>
             <div className="mt-14 flex flex-col items-center justify-center gap-4 sm:flex-row">

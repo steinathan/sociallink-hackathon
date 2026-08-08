@@ -1,13 +1,11 @@
 import { Metadata } from "next";
 import Link from "next/link";
-import { BadgeCheck, Globe2, ShieldCheck, Wallet2, Zap } from "lucide-react";
+import { BadgeCheck, Globe2, ShieldCheck, Zap } from "lucide-react";
 import { PhoneAuthForm } from "@/components/auth/phone-auth-form";
-import { GoogleSignInButton } from "@/components/auth/google-sign-in-button";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { LogoFull } from "@/components/layout/logo";
 import { LoginPageClient } from "@/components/auth/login-page-client";
-import { buttonVariants } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { WalletSignInLink } from "@/components/auth/wallet-sign-in-link";
 
 export const metadata: Metadata = {
   title: "Sign In | SocialLink",
@@ -17,8 +15,8 @@ export const metadata: Metadata = {
 
 const trustPoints = [
   {
-    value: "₦2.4B+",
-    label: "Escrow settled",
+    value: "$2.4M+",
+    label: "USDC settled on X Layer",
     icon: ShieldCheck,
   },
   {
@@ -114,62 +112,52 @@ export default function LoginPage() {
               <LogoFull />
             </div>
             <div className="mb-10">
-              <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/[0.06] px-3.5 py-1.5 text-[10px] font-medium uppercase tracking-[0.18em] text-primary">
+              <div className="inline-flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
                 <span className="relative flex h-1.5 w-1.5">
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-70" />
                   <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary" />
                 </span>
-                Secure access
+                <span>Onchain</span>
+                <span className="text-muted-foreground/50">·</span>
+                <span className="font-serif text-[13px] font-light italic tracking-normal normal-case text-foreground">
+                  AI Booking Agent
+                </span>
+                <span className="text-muted-foreground/50">·</span>
+                <span>X Layer</span>
               </div>
               <h2 className="mt-7 font-serif text-4xl font-light leading-tight tracking-tight">
                 Sign in to continue
               </h2>
               <p className="mt-4 text-[14px] leading-[1.65] text-muted-foreground">
-                We&rsquo;ll send a one-time code to your phone. No password,
-                no friction.
+                Connect your OKX Wallet for <span className="font-semibold text-foreground">onchain USDC escrow</span> and our <span className="font-semibold text-foreground">AI Booking Agent</span> — 0 gas, settled on X Layer. Or sign in with your phone below.
               </p>
+            </div>
+
+            <WalletSignInLink />
+
+            <div className="relative my-6 flex items-center gap-3">
+              <div className="h-px flex-1 bg-border" />
+              <span className="text-[10.5px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
+                or with phone
+              </span>
+              <div className="h-px flex-1 bg-border" />
             </div>
 
             <PhoneAuthForm variant="light" compact />
 
-            <div className="relative my-9 flex items-center gap-3">
-              <div className="h-px flex-1 bg-border" />
-              <span className="text-[10.5px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
-                or
-              </span>
-              <div className="h-px flex-1 bg-border" />
-            </div>
-
-            <GoogleSignInButton />
-
-            <div className="relative my-4 flex items-center">
-              <span className="h-px flex-1 bg-border" />
-              <span className="px-3 text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
-                or
-              </span>
-              <span className="h-px flex-1 bg-border" />
-            </div>
-
-            <Link
-              href="/login/wallet"
-              className={cn(
-                buttonVariants({ variant: "outline" }),
-                "group h-13 w-full justify-center gap-3 rounded-2xl border-border/70 bg-card py-3.5 text-[14.5px] font-medium tracking-tight shadow-[0_1px_0_oklch(0.55_0.02_60/0.04)] transition-all hover:border-primary/30 hover:bg-card hover:shadow-[0_4px_18px_-8px_oklch(0.55_0.13_30/0.20)]"
-              )}
-            >
-              <Wallet2
-                className="h-[18px] w-[18px] text-primary"
-                strokeWidth={1.75}
-              />
-              <span>Continue with OKX Wallet</span>
-            </Link>
+            {/*
+              ponytail: Google sign-in hidden per hackathon positioning.
+              OKX Wallet is the primary Web3 path; phone is the fallback.
+              Component preserved for when the campaign broadens beyond X Layer.
+              <GoogleSignInButton />
+            */}
 
             <div className="mt-10 space-y-3.5 border-t border-border pt-8">
               <div className="flex items-center gap-3 text-[13px] text-muted-foreground">
                 <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-border bg-card">
                   <ShieldCheck className="h-3.5 w-3.5 text-primary" strokeWidth={1.5} />
                 </div>
-                <span>End-to-end encrypted verification</span>
+                <span>End-to-end encrypted verification (SIWE EIP-4361 · chain 195)</span>
               </div>
               <div className="flex items-center gap-3 text-[13px] text-muted-foreground">
                 <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-border bg-card">

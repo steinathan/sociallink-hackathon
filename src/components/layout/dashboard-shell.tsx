@@ -141,7 +141,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       <PushNotificationPrompt />
       <div className="flex-1 flex">
         {/* Desktop Sidebar */}
-        <aside className="fixed left-0 top-0 hidden h-screen w-64 flex-col border-r border-foreground/[0.06] bg-background lg:flex">
+        <aside className="fixed left-0 top-10 hidden h-screen w-64 flex-col border-r border-foreground/[0.06] bg-background lg:flex">
           <div className="flex h-20 items-center border-b border-foreground/[0.06] px-6">
             <LogoFull />
           </div>
@@ -169,7 +169,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         {/* Main Content */}
         <div className="lg:pl-64 flex-1 flex flex-col">
           {/* Top Bar */}
-          <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-foreground/[0.06] bg-background/85 px-4 backdrop-blur-xl md:px-8">
+          <header className="sticky top-10 z-40 flex h-16 items-center justify-between border-b border-foreground/[0.06] bg-background/85 px-4 backdrop-blur-xl md:px-8">
             <Sheet>
               <SheetTrigger className="inline-flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground lg:hidden">
                 <Menu className="h-5 w-5" strokeWidth={1.5} />

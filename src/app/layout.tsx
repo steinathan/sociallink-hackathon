@@ -7,6 +7,7 @@ import { ServiceWorkerRegistration } from "@/components/layout/service-worker-re
 import { AuthProvider } from "@/components/auth/auth-provider";
 import { GlobalPwaInstallPrompt } from "@/components/layout/global-pwa-install-prompt";
 import { Web3Provider } from "@/lib/web3/web3-provider";
+import { XLayerBanner } from "@/components/layout/xlayer-banner";
 
 const SITE_URL =
   process.env.NEXT_PUBLIC_APP_URL?.replace(/\/+$/, "") || "https://sociallink.ng";
@@ -145,6 +146,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
+          <XLayerBanner />
           <AuthProvider>
             <Web3Provider>
               {children}
