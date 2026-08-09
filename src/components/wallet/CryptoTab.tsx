@@ -20,32 +20,24 @@ import { Web3Provider } from "@/lib/web3/web3-provider";
 import { ConnectWalletButton } from "@/components/wallet/ConnectWalletButton";
 import { CryptoBalanceCard } from "@/components/wallet/CryptoBalanceCard";
 import { TxHistory } from "@/components/wallet/TxHistory";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Separator } from "@/components/ui/separator";
-import {
-  xLayer,
-  oklinkTxUrl,
-} from "@/lib/web3/xlayer-chain";
+import { xLayer, oklinkTxUrl, XLAYER_USDC_DECIMALS } from "@/lib/web3/xlayer-chain";
 
 const USDC_ADDRESS = process.env.NEXT_PUBLIC_USDC_X_LAYER_ADDRESS as
   | `0x${string}`
   | undefined;
 
-function WalletPageInner() {
+function CryptoTabInner() {
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
   const queryClient = useQueryClient();
   const { writeContractAsync, isPending: isSending } = useWriteContract();
+
+  const [panel, setPanel] = useState<"fund" | "withdraw" | null>(null);
 
   const [txHashInput, setTxHashInput] = useState("");
   const [claiming, setClaiming] = useState(false);
@@ -114,8 +106,7 @@ function WalletPageInner() {
       return;
     }
 
-    // Tell user the high-level intent (server-side planning). For hackathon,
-    // we then immediately fire the client-side USDC transfer.
+    // Server plans the withdrawal (balance + policy); the client signs it.
     const plan = await requestCryptoWithdrawal(
       "ignored",
       withdrawTo as `0x${string}`,
@@ -129,112 +120,112 @@ function WalletPageInner() {
         address: USDC_ADDRESS,
         abi: erc20Abi,
         functionName: "transfer",
-        args: [withdrawTo as `0x${string}`, parseUnits(String(amount), 6)],
+        args: [
+          withdrawTo as `0x${string}`,
+          parseUnits(String(amount), XLAYER_USDC_DECIMALS),
+        ],
       });
       setLastWithdrawHash(hash);
       toast.success("USDC transfer signed");
       queryClient.invalidateQueries({ queryKey: ["usdc-history"] });
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Transfer cancelled";
-      toast.error(msg);
+      toast.error(err instanceof Error ? err.message : "Transfer cancelled");
     }
   }
 
+  const wrongChain = isConnected && chainId !== xLayer.id;
+
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <p className="text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
-            Web3 · @XLayerOfficial
-          </p>
-          <h1 className="mt-1 font-serif text-3xl font-medium tracking-tight">
-            Crypto wallet
-          </h1>
-          <p className="mt-1 max-w-prose text-sm text-muted-foreground">
-            Fund with USDC on X Layer (OKX zkEVM). OKX Wallet pays zero gas on
-            USDC and USDT transfers.
-          </p>
-        </div>
+    <div className="space-y-6">
+      {/* Balance header + X Layer aside */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
+          Powered by X Layer · @XLayerOfficial
+        </p>
         <ConnectWalletButton variant={isConnected ? "outline" : "primary"} />
-      </header>
+      </div>
 
       <CryptoBalanceCard />
 
-      <TxHistory />
+      <p className="text-[12.5px] leading-relaxed text-muted-foreground">
+        X Layer is OKX&apos;s zkEVM. Pay through OKX Wallet and stablecoin
+        transfers cost zero gas — OKB covers everything else. Every movement
+        settles publicly on OKLink.
+      </p>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="font-serif text-xl tracking-tight">
-            Fund with USDC
-          </CardTitle>
-          <CardDescription>
-            Already sent USDC on X Layer? Paste the tx hash to claim it into
-            your SocialLink balance.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="space-y-1.5">
-            <Label htmlFor="tx-hash" className="text-xs text-muted-foreground">
-              Transaction hash
-            </Label>
-            <div className="flex flex-col gap-2 sm:flex-row">
+      {/* Actions */}
+      <div className="flex flex-wrap gap-2">
+        <Button
+          type="button"
+          variant={panel === "fund" ? "default" : "outline"}
+          onClick={() => setPanel(panel === "fund" ? null : "fund")}
+        >
+          <ArrowDownToLine className="h-4 w-4" />
+          Fund with USDC
+        </Button>
+        <Button
+          type="button"
+          variant={panel === "withdraw" ? "default" : "outline"}
+          onClick={() => setPanel(panel === "withdraw" ? null : "withdraw")}
+        >
+          <ArrowUpFromLine className="h-4 w-4" />
+          Withdraw
+        </Button>
+      </div>
+
+      {panel === "fund" && (
+        <Card>
+          <CardContent className="space-y-3 pt-6">
+            <div className="space-y-1.5">
+              <Label htmlFor="tx-hash" className="text-xs text-muted-foreground">
+                Sent USDC on X Layer already? Paste the transaction hash to
+                credit your balance.
+              </Label>
               <Input
                 id="tx-hash"
                 placeholder="0x…"
                 value={txHashInput}
                 onChange={(e) => setTxHashInput(e.target.value.trim())}
                 className="font-mono text-xs"
-                autoComplete="off"
-                spellCheck={false}
               />
-              <Button
-                onClick={handleClaim}
-                disabled={claiming || !txHashInput}
-                type="button"
-              >
-                {claiming ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <ArrowDownToLine className="h-4 w-4" />
-                )}
-                {claiming ? "Verifying on-chain…" : "Claim deposit"}
-              </Button>
             </div>
-          </div>
-          {lastClaimHash ? (
-            <a
-              href={oklinkTxUrl(lastClaimHash as `0x${string}`)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+            <Button
+              onClick={handleClaim}
+              disabled={claiming || !txHashInput}
+              type="button"
             >
-              Last claim: {lastClaimHash.slice(0, 10)}…
-              {lastClaimHash.slice(-6)}
-              <ExternalLink className="h-3 w-3" />
-            </a>
-          ) : null}
-        </CardContent>
-      </Card>
+              {claiming ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <ArrowDownToLine className="h-4 w-4" />
+              )}
+              {claiming ? "Verifying on-chain…" : "Claim deposit"}
+            </Button>
+            {lastClaimHash && (
+              <a
+                href={oklinkTxUrl(lastClaimHash as `0x${string}`, xLayer.testnet)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+              >
+                Last claim: {lastClaimHash.slice(0, 10)}…{lastClaimHash.slice(-6)}
+                <ExternalLink className="h-3 w-3" />
+              </a>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="font-serif text-xl tracking-tight">
-            Withdraw to wallet
-          </CardTitle>
-          <CardDescription>
-            Sends USDC from your connected OKX Wallet. OKX Wallet pays zero gas
-            on stablecoin transfers.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {chainId !== xLayer.id && isConnected ? (
-            <Alert variant="destructive">
-              <AlertDescription>
-                Wrong network. Switch to X Layer in your OKX Wallet.
-              </AlertDescription>
-            </Alert>
-          ) : null}
-          <div className="grid gap-3 sm:grid-cols-[1fr_180px_auto]">
+      {panel === "withdraw" && (
+        <Card>
+          <CardContent className="space-y-3 pt-6">
+            {wrongChain && (
+              <Alert variant="destructive">
+                <AlertDescription>
+                  Wrong network. Switch to X Layer in your OKX Wallet.
+                </AlertDescription>
+              </Alert>
+            )}
             <div className="space-y-1.5">
               <Label
                 htmlFor="withdraw-to"
@@ -248,73 +239,72 @@ function WalletPageInner() {
                 value={withdrawTo}
                 onChange={(e) => setWithdrawTo(e.target.value.trim())}
                 className="font-mono text-xs"
-                autoComplete="off"
-                spellCheck={false}
               />
             </div>
             <div className="space-y-1.5">
               <Label
-                htmlFor="withdraw-amount"
+                htmlFor="withdraw-usdc"
                 className="text-xs text-muted-foreground"
               >
                 Amount (USDC)
               </Label>
               <Input
-                id="withdraw-amount"
-                inputMode="decimal"
+                id="withdraw-usdc"
+                type="number"
+                min={0}
                 placeholder="0.00"
                 value={withdrawAmount}
                 onChange={(e) => setWithdrawAmount(e.target.value)}
-                className="font-mono text-sm"
+                className="font-mono tabular-nums"
               />
             </div>
-            <div className="flex items-end">
-              <Button
-                onClick={handleWithdraw}
-                disabled={isSending || !isConnected}
-                type="button"
-                className="w-full sm:w-auto"
-              >
-                {isSending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <ArrowUpFromLine className="h-4 w-4" />
-                )}
-                Sign from wallet
-              </Button>
-            </div>
-          </div>
-          {withdrawHint ? (
-            <p className="text-[11px] text-muted-foreground">
-              Server plan: {withdrawHint}. Client signs the transfer.
-            </p>
-          ) : null}
-          {lastWithdrawHash ? (
-            <>
-              <Separator />
+            <Button
+              onClick={handleWithdraw}
+              disabled={isSending || !withdrawTo || !withdrawAmount}
+              type="button"
+            >
+              {isSending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <ArrowUpFromLine className="h-4 w-4" />
+              )}
+              Sign from wallet
+            </Button>
+            {withdrawHint && (
+              <p className="text-[11px] text-muted-foreground">
+                Server plan: {withdrawHint}. Client signs the transfer.
+              </p>
+            )}
+            {lastWithdrawHash && (
               <a
-                href={oklinkTxUrl(lastWithdrawHash as `0x${string}`)}
+                href={oklinkTxUrl(
+                  lastWithdrawHash as `0x${string}`,
+                  xLayer.testnet,
+                )}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
               >
-                Last transfer: {lastWithdrawHash.slice(0, 10)}…
+                Last withdrawal: {lastWithdrawHash.slice(0, 10)}…
                 {lastWithdrawHash.slice(-6)}
                 <ExternalLink className="h-3 w-3" />
               </a>
-            </>
-          ) : null}
-        </CardContent>
-      </Card>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      <TxHistory />
     </div>
   );
 }
 
-export default function WalletCryptoPage() {
-  // ponytail: redundant provider, lift to root layout once more web3 pages land
+export function CryptoTab() {
+  // ponytail: provider scoped to this tab so NGN-only users never load wagmi.
+  // Lift to the dashboard layout once a second web3 surface lands.
   return (
     <Web3Provider>
-      <WalletPageInner />
+      <CryptoTabInner />
     </Web3Provider>
   );
 }

@@ -42,7 +42,6 @@ const navItems = [
   { href: "/explore", icon: Compass, label: "Explore" },
   { href: "/bookings", icon: CalendarCheck, label: "Bookings" },
   { href: "/wallet", icon: Wallet, label: "Wallet" },
-  { href: "/wallet/crypto", icon: Wallet, label: "Crypto Wallet" },
   { href: "/ai-assistant", icon: Sparkles, label: "AI Assistant" },
   { href: "/messages", icon: MessageSquare, label: "Messages" },
   { href: "/profile", icon: User, label: "Profile" },
@@ -55,8 +54,9 @@ function NavLinks({ onClick }: { onClick?: () => void }) {
 
   const visibleNavItems = navItems.filter((item) => {
     if (userDoc?.role === "ADMIN") {
-      // Web3 + AI surface area is for MEMBER + CONSULTANT only.
-      if (item.href === "/wallet/crypto" || item.href === "/ai-assistant") return false;
+      // AI surface area is for MEMBER + CONSULTANT only. The unified wallet
+      // (USDC + NGN) stays visible to every role.
+      if (item.href === "/ai-assistant") return false;
     }
     if (item.href === "/explore" && userDoc?.role === "CONSULTANT") return false;
     return true;

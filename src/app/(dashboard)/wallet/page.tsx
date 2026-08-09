@@ -12,7 +12,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CryptoTab } from "@/components/wallet/CryptoTab";
+import { WalletLedger } from "@/components/wallet/WalletLedger";
 import {
   PlusCircle,
   ArrowDownToLine,
@@ -37,14 +41,17 @@ const NIGERIAN_BANKS = [
   { code: "221", name: "Stanbic IBTC" },
 ];
 
-export default function WalletPage() {
+const formatNaira = (n: number) => `₦${n.toLocaleString()}`;
+
+function FiatTab() {
   const router = useRouter();
   const { userDoc } = useAuthStore();
-  useAuth();
 
   const availableBalance = userDoc?.wallet?.availableBalance ?? 0;
   const escrowBalance = userDoc?.wallet?.escrowBalance ?? 0;
   const isConsultant = userDoc?.role === "CONSULTANT";
+
+  const [panel, setPanel] = useState<"fund" | "withdraw" | null>(null);
 
   const [fundAmount, setFundAmount] = useState("");
   const [fundLoading, setFundLoading] = useState(false);
@@ -107,7 +114,7 @@ export default function WalletPage() {
         amount,
         bankCode,
         accountNumber,
-        accountName
+        accountName,
       );
       if (!result.success) {
         setWithdrawError(result.error ?? "Withdrawal failed");
@@ -125,325 +132,310 @@ export default function WalletPage() {
     }
   }
 
-  const formatNaira = (n: number) => `₦${n.toLocaleString()}`;
-
   return (
-    <div className="space-y-10">
-      {/* Header */}
-      <header>
-        <div className="mb-3 text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
-          Wallet
-        </div>
-        <h1 className="font-serif text-3xl font-light leading-tight tracking-tight sm:text-4xl">
-          {isConsultant ? "Earnings" : "Your funds"}, at a glance.
-        </h1>
-        <p className="mt-2 max-w-xl text-[14px] text-muted-foreground">
-          {isConsultant
-            ? "Withdraw earnings to your bank account or view escrowed sessions."
-            : "Top up your wallet, track escrow, and fund your next session."}
-        </p>
-      </header>
+    <div className="space-y-6">
+      <p className="text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
+        Naira · Paystack · {isConsultant ? "Consultant" : "Member"}
+      </p>
 
-      {/* Premium balance cards */}
-      <section className="grid gap-4 lg:grid-cols-5">
-        <div className="glow-coral tape-grain relative overflow-hidden rounded-[28px] border border-foreground/[0.08] bg-card p-8 lg:col-span-3 lg:p-10">
-          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
-          <div className="text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
-            {isConsultant ? "Available earnings" : "Available balance"}
+      {/* Balances */}
+      <div className="glow-coral tape-grain relative overflow-hidden rounded-[28px] border border-foreground/[0.08] bg-card p-8">
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
+        <div className="text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
+          {isConsultant ? "Available earnings" : "Available balance"}
+        </div>
+        <div className="mt-4 font-serif text-5xl font-light leading-none tracking-tight">
+          {formatNaira(availableBalance)}
+        </div>
+        <div className="mt-6 flex items-center justify-between border-t border-foreground/[0.06] pt-5">
+          <div>
+            <div className="inline-flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
+              <Lock className="h-3 w-3" strokeWidth={1.5} />
+              In escrow
+            </div>
+            <div className="mt-1 font-mono text-sm tabular-nums">
+              {formatNaira(escrowBalance)}
+            </div>
           </div>
-          <div className="mt-4 font-serif text-5xl font-light leading-none tracking-tight sm:text-6xl">
-            {formatNaira(availableBalance)}
-          </div>
-          <div className="mt-4 max-w-md text-[13px] text-muted-foreground">
+          <div className="text-right text-[11.5px] text-muted-foreground">
             {isConsultant
-              ? "Available to withdraw to your bank. Settlements clear within 24 hours via Paystack."
-              : "Funds ready to lock in escrow for any session request."}
+              ? "Settles within 24 hours"
+              : "Released on settlement"}
           </div>
         </div>
+      </div>
 
-        <div className="relative overflow-hidden rounded-[28px] border border-foreground/[0.08] bg-card p-8 lg:col-span-2 lg:p-10">
-          <div className="flex items-start justify-between">
+      <div className="flex items-center gap-3 rounded-2xl border border-foreground/[0.06] bg-card/60 px-5 py-4 text-[12.5px] text-muted-foreground">
+        <ShieldCheck
+          className="h-4 w-4 shrink-0 text-primary"
+          strokeWidth={1.5}
+        />
+        Payments are processed by Paystack under PCI-DSS Level 1. Your card
+        details never touch our servers.
+      </div>
+
+      {/* Actions */}
+      <div className="flex flex-wrap gap-2">
+        <Button
+          type="button"
+          variant={panel === "fund" ? "default" : "outline"}
+          onClick={() => setPanel(panel === "fund" ? null : "fund")}
+        >
+          <PlusCircle className="h-4 w-4" />
+          Fund with card or bank
+        </Button>
+        <Button
+          type="button"
+          variant={panel === "withdraw" ? "default" : "outline"}
+          onClick={() => setPanel(panel === "withdraw" ? null : "withdraw")}
+        >
+          <ArrowDownToLine className="h-4 w-4" />
+          Withdraw to bank
+        </Button>
+      </div>
+
+      {panel === "fund" && (
+        <Card>
+          <CardContent className="space-y-6 pt-6">
             <div>
               <div className="text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
-                In escrow
+                Choose an amount
               </div>
-              <div className="mt-4 font-serif text-4xl font-light leading-none tracking-tight sm:text-5xl">
-                {formatNaira(escrowBalance)}
-              </div>
-              <div className="mt-4 text-[12.5px] text-muted-foreground">
-                Released on settlement.
-              </div>
-            </div>
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-foreground/[0.06] bg-background">
-              <Lock className="h-4 w-4 text-muted-foreground" strokeWidth={1.5} />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Trust strip */}
-      <section className="flex items-center gap-3 rounded-2xl border border-foreground/[0.06] bg-card/60 px-5 py-4 text-[12.5px] text-muted-foreground">
-        <ShieldCheck className="h-4 w-4 text-primary" strokeWidth={1.5} />
-        All payments are processed by Paystack under PCI-DSS Level 1.
-        Your card details never touch our servers.
-      </section>
-
-      {/* Action tabs */}
-      <Tabs defaultValue={isConsultant ? "withdraw" : "fund"}>
-        <TabsList className="inline-flex h-11 rounded-full bg-muted p-1">
-          {!isConsultant && (
-            <TabsTrigger
-              value="fund"
-              className="h-9 rounded-full px-5 text-[13px] data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
-            >
-              Fund wallet
-            </TabsTrigger>
-          )}
-          <TabsTrigger
-            value="withdraw"
-            className="h-9 rounded-full px-5 text-[13px] data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
-          >
-            Withdraw
-          </TabsTrigger>
-        </TabsList>
-
-        {/* Fund tab */}
-        {!isConsultant && (
-          <TabsContent value="fund" className="mt-8">
-            <div className="grid gap-px overflow-hidden rounded-[28px] border border-foreground/[0.06] bg-foreground/[0.06] lg:grid-cols-[1fr_1.4fr]">
-              <div className="space-y-7 bg-card p-8 lg:p-10">
-                <div>
-                  <div className="text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
-                    Choose an amount
-                  </div>
-                  <div className="mt-5 flex flex-wrap gap-2">
-                    {PRESET_AMOUNTS.map((a) => (
-                      <button
-                        key={a}
-                        type="button"
-                        onClick={() => setFundAmount(String(a))}
-                        className={`h-11 rounded-full px-5 text-[13px] font-medium transition-all ${
-                          fundAmount === String(a)
-                            ? "bg-primary text-primary-foreground shadow-sm"
-                            : "border border-foreground/[0.08] bg-background text-foreground hover:border-primary/30"
-                        }`}
-                      >
-                        {formatNaira(a)}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="space-y-2.5">
-                  <Label
-                    htmlFor="fund-amount"
-                    className="text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground"
+              <div className="mt-4 flex flex-wrap gap-2">
+                {PRESET_AMOUNTS.map((a) => (
+                  <button
+                    key={a}
+                    type="button"
+                    onClick={() => setFundAmount(String(a))}
+                    className={`h-10 rounded-full px-4 text-[13px] font-medium transition-all ${
+                      fundAmount === String(a)
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "border border-foreground/[0.08] bg-background text-foreground hover:border-primary/30"
+                    }`}
                   >
-                    Or enter a custom amount
-                  </Label>
-                  <div className="relative">
-                    <span className="absolute inset-y-0 left-4 flex items-center font-serif text-base text-muted-foreground">
-                      ₦
-                    </span>
-                    <Input
-                      id="fund-amount"
-                      type="number"
-                      placeholder="0"
-                      min={500}
-                      value={fundAmount}
-                      onChange={(e) => setFundAmount(e.target.value)}
-                      className="h-14 rounded-2xl border-foreground/[0.08] bg-background pl-9 font-serif text-lg tracking-tight"
-                    />
-                  </div>
-                  <p className="text-[11.5px] text-muted-foreground">
-                    Minimum funding amount is {formatNaira(500)}.
-                  </p>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleFundWallet}
-                  disabled={fundLoading || !fundAmount}
-                  className="btn-coral inline-flex h-13 w-full items-center justify-center gap-2 rounded-full text-[14px] font-semibold tracking-tight disabled:opacity-50"
-                >
-                  {fundLoading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <>
-                      <PlusCircle className="h-4 w-4" strokeWidth={1.5} />
-                      Continue to Paystack
-                    </>
-                  )}
-                </button>
-              </div>
-
-              <div className="space-y-7 bg-card p-8 lg:p-10">
-                <div>
-                  <div className="text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
-                    How funding works
-                  </div>
-                  <ol className="mt-6 space-y-5">
-                    {[
-                      {
-                        t: "Choose an amount",
-                        d: "Pick a quick amount or enter a custom value.",
-                      },
-                      {
-                        t: "Pay securely on Paystack",
-                        d: "Card, transfer, USSD — whichever you prefer.",
-                      },
-                      {
-                        t: "Wallet credited instantly",
-                        d: "Funds appear in your available balance immediately.",
-                      },
-                    ].map((s, i) => (
-                      <li key={s.t} className="flex gap-5">
-                        <div className="font-serif text-2xl font-light text-primary/40">
-                          {String(i + 1).padStart(2, "0")}
-                        </div>
-                        <div>
-                          <div className="font-serif text-[15px] font-medium tracking-tight">
-                            {s.t}
-                          </div>
-                          <div className="mt-1 text-[12.5px] leading-[1.55] text-muted-foreground">
-                            {s.d}
-                          </div>
-                        </div>
-                      </li>
-                    ))}
-                  </ol>
-                </div>
+                    {formatNaira(a)}
+                  </button>
+                ))}
               </div>
             </div>
-          </TabsContent>
-        )}
 
-        {/* Withdraw tab */}
-        <TabsContent value="withdraw" className="mt-8">
-          <div className="overflow-hidden rounded-[28px] border border-foreground/[0.06] bg-card p-8 lg:p-10">
+            <div className="space-y-2">
+              <Label
+                htmlFor="fund-amount"
+                className="text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground"
+              >
+                Or enter a custom amount
+              </Label>
+              <div className="relative">
+                <span className="absolute inset-y-0 left-4 flex items-center font-serif text-base text-muted-foreground">
+                  ₦
+                </span>
+                <Input
+                  id="fund-amount"
+                  type="number"
+                  placeholder="0"
+                  min={500}
+                  value={fundAmount}
+                  onChange={(e) => setFundAmount(e.target.value)}
+                  className="h-13 rounded-2xl border-foreground/[0.08] bg-background pl-9 font-serif text-lg tracking-tight"
+                />
+              </div>
+              <p className="text-[11.5px] text-muted-foreground">
+                Minimum funding amount is {formatNaira(500)}. Card, transfer, or
+                USSD — your wallet is credited as soon as Paystack confirms.
+              </p>
+            </div>
+
+            <Button
+              type="button"
+              onClick={handleFundWallet}
+              disabled={fundLoading || !fundAmount}
+            >
+              {fundLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <PlusCircle className="h-4 w-4" />
+              )}
+              Continue to Paystack
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {panel === "withdraw" && (
+        <Card>
+          <CardContent className="space-y-5 pt-6">
             {withdrawError && (
-              <Alert className="mb-6 border-destructive/25 bg-destructive/[0.06] text-destructive">
+              <Alert className="border-destructive/25 bg-destructive/[0.06] text-destructive">
                 <AlertDescription className="text-[12px] font-medium">
                   {withdrawError}
                 </AlertDescription>
               </Alert>
             )}
 
-            <div className="grid gap-8 lg:grid-cols-2">
-              <div className="space-y-6">
-                <div className="space-y-2.5">
-                  <Label
-                    htmlFor="withdraw-amount"
-                    className="text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground"
-                  >
-                    Amount
-                  </Label>
-                  <div className="relative">
-                    <span className="absolute inset-y-0 left-4 flex items-center font-serif text-base text-muted-foreground">
-                      ₦
-                    </span>
-                    <Input
-                      id="withdraw-amount"
-                      type="number"
-                      placeholder="0"
-                      min={500}
-                      max={availableBalance}
-                      value={withdrawAmount}
-                      onChange={(e) => setWithdrawAmount(e.target.value)}
-                      className="h-14 rounded-2xl border-foreground/[0.08] bg-background pl-9 font-serif text-lg tracking-tight"
-                    />
-                  </div>
-                  <p className="text-[11.5px] text-muted-foreground">
-                    Available: {formatNaira(availableBalance)} · minimum {formatNaira(500)}.
-                  </p>
-                </div>
-              </div>
-
-              <div className="space-y-6">
-                <div className="space-y-2.5">
-                  <Label
-                    htmlFor="bank-code"
-                    className="text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground"
-                  >
-                    Bank
-                  </Label>
-                  <select
-                    id="bank-code"
-                    value={bankCode}
-                    onChange={(e) => setBankCode(e.target.value)}
-                    className="h-14 w-full rounded-2xl border border-foreground/[0.08] bg-background px-4 text-[14px] focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10"
-                  >
-                    <option value="">Select your bank…</option>
-                    {NIGERIAN_BANKS.map((b) => (
-                      <option key={b.code} value={b.code}>
-                        {b.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2.5">
-                    <Label
-                      htmlFor="account-number"
-                      className="text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground"
-                    >
-                      Account number
-                    </Label>
-                    <Input
-                      id="account-number"
-                      type="text"
-                      inputMode="numeric"
-                      maxLength={10}
-                      placeholder="10-digit NUBAN"
-                      value={accountNumber}
-                      onChange={(e) =>
-                        setAccountNumber(e.target.value.replace(/\D/g, ""))
-                      }
-                      className="h-14 rounded-2xl border-foreground/[0.08] bg-background font-mono tabular-nums"
-                    />
-                  </div>
-
-                  <div className="space-y-2.5">
-                    <Label
-                      htmlFor="account-name"
-                      className="text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground"
-                    >
-                      Account name
-                    </Label>
-                    <Input
-                      id="account-name"
-                      type="text"
-                      placeholder="As on your account"
-                      value={accountName}
-                      onChange={(e) => setAccountName(e.target.value)}
-                      className="h-14 rounded-2xl border-foreground/[0.08] bg-background"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-10 border-t border-foreground/[0.06] pt-6">
-              <button
-                type="button"
-                onClick={handleWithdraw}
-                disabled={withdrawLoading}
-                className="btn-coral inline-flex h-13 w-full items-center justify-center gap-2 rounded-full text-[14px] font-semibold tracking-tight disabled:opacity-50 sm:w-auto sm:px-8"
+            <div className="space-y-2">
+              <Label
+                htmlFor="withdraw-amount"
+                className="text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground"
               >
-                {withdrawLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <>
-                    <ArrowDownToLine className="h-4 w-4" strokeWidth={1.5} />
-                    Withdraw to bank
-                  </>
-                )}
-              </button>
-              <p className="mt-4 text-[11.5px] text-muted-foreground">
-                Settlements clear within 24 hours via Paystack Transfers.
+                Amount
+              </Label>
+              <div className="relative">
+                <span className="absolute inset-y-0 left-4 flex items-center font-serif text-base text-muted-foreground">
+                  ₦
+                </span>
+                <Input
+                  id="withdraw-amount"
+                  type="number"
+                  placeholder="0"
+                  min={500}
+                  max={availableBalance}
+                  value={withdrawAmount}
+                  onChange={(e) => setWithdrawAmount(e.target.value)}
+                  className="h-13 rounded-2xl border-foreground/[0.08] bg-background pl-9 font-serif text-lg tracking-tight"
+                />
+              </div>
+              <p className="text-[11.5px] text-muted-foreground">
+                Available: {formatNaira(availableBalance)} · minimum{" "}
+                {formatNaira(500)}.
               </p>
             </div>
+
+            <div className="space-y-2">
+              <Label
+                htmlFor="bank-code"
+                className="text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground"
+              >
+                Bank
+              </Label>
+              <select
+                id="bank-code"
+                value={bankCode}
+                onChange={(e) => setBankCode(e.target.value)}
+                className="h-13 w-full rounded-2xl border border-foreground/[0.08] bg-background px-4 text-[14px] focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10"
+              >
+                <option value="">Select your bank…</option>
+                {NIGERIAN_BANKS.map((b) => (
+                  <option key={b.code} value={b.code}>
+                    {b.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label
+                  htmlFor="account-number"
+                  className="text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground"
+                >
+                  Account number
+                </Label>
+                <Input
+                  id="account-number"
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={10}
+                  placeholder="10-digit NUBAN"
+                  value={accountNumber}
+                  onChange={(e) =>
+                    setAccountNumber(e.target.value.replace(/\D/g, ""))
+                  }
+                  className="h-13 rounded-2xl border-foreground/[0.08] bg-background font-mono tabular-nums"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label
+                  htmlFor="account-name"
+                  className="text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground"
+                >
+                  Account name
+                </Label>
+                <Input
+                  id="account-name"
+                  type="text"
+                  placeholder="As on your account"
+                  value={accountName}
+                  onChange={(e) => setAccountName(e.target.value)}
+                  className="h-13 rounded-2xl border-foreground/[0.08] bg-background"
+                />
+              </div>
+            </div>
+
+            <Button
+              type="button"
+              onClick={handleWithdraw}
+              disabled={withdrawLoading}
+            >
+              {withdrawLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <ArrowDownToLine className="h-4 w-4" />
+              )}
+              Withdraw to bank
+            </Button>
+            <p className="text-[11.5px] text-muted-foreground">
+              Settlements clear within 24 hours via Paystack Transfers.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      <div>
+        <div className="mb-3 text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
+          Recent naira movements
+        </div>
+        <WalletLedger rail="fiat" rows={10} />
+      </div>
+    </div>
+  );
+}
+
+export default function WalletPage() {
+  useAuth();
+
+  return (
+    <div className="space-y-8">
+      <header>
+        <div className="mb-3 text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
+          Wallet
+        </div>
+        <h1 className="font-serif text-3xl font-light leading-tight tracking-tight sm:text-4xl">
+          Your wallet
+        </h1>
+        <p className="mt-2 max-w-xl text-[14px] text-muted-foreground">
+          Two rails, one balance sheet. Hold USDC on X Layer, naira with
+          Paystack, and read every movement in a single ledger.
+        </p>
+      </header>
+
+      <Tabs defaultValue="crypto">
+        <TabsList variant="line" className="w-full justify-start sm:w-fit">
+          <TabsTrigger value="crypto">Crypto (USDC)</TabsTrigger>
+          <TabsTrigger value="fiat">Fiat (NGN)</TabsTrigger>
+          <TabsTrigger value="activity">Activity</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="crypto" className="mx-auto w-full max-w-2xl py-8">
+          <CryptoTab />
+        </TabsContent>
+
+        <TabsContent value="fiat" className="mx-auto w-full max-w-2xl py-8">
+          <FiatTab />
+        </TabsContent>
+
+        <TabsContent value="activity" className="mx-auto w-full max-w-2xl py-8">
+          <div className="space-y-6">
+            <p className="text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
+              Every rail · newest first
+            </p>
+            <p className="text-[12.5px] leading-relaxed text-muted-foreground">
+              USDC settles on X Layer with a public OKLink receipt. Naira
+              settles through Paystack. Balances are tracked separately — this
+              ledger is where both rails read as one story.
+            </p>
+            <WalletLedger rail="all" rows={20} />
           </div>
         </TabsContent>
       </Tabs>
