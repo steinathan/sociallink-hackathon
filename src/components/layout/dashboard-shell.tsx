@@ -141,7 +141,8 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       <PushNotificationPrompt />
       <div className="flex-1 flex">
         {/* Desktop Sidebar */}
-        <aside className="fixed left-0 top-10 hidden h-screen w-64 flex-col border-r border-foreground/[0.06] bg-background lg:flex">
+        {/* ponytail: fixed top-10 (banner offset) + h-screen overflows the viewport by 2.5rem and clips the bottom card on every screen. Subtract the offset so the role card sits at the viewport bottom. Upgrade to a sticky sidebar if the banner offset ever changes dynamically. */}
+        <aside className="fixed left-0 top-10 hidden h-[calc(100vh-2.5rem)] w-64 flex-col border-r border-foreground/[0.06] bg-background lg:flex">
           <div className="flex h-20 items-center border-b border-foreground/[0.06] px-6">
             <LogoFull />
           </div>

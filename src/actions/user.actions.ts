@@ -46,10 +46,6 @@ export async function createUserDocument(
     const existing = await userRef.get();
     console.log("[createUserDocument] Existing check complete. Exists:", existing.exists);
 
-    if (existing.exists) {
-      return { success: true };
-    }
-
     const fallbackPhoneNumber = phoneNumber?.trim();
     let resolvedPhoneNumber = fallbackPhoneNumber;
 
@@ -60,6 +56,43 @@ export async function createUserDocument(
       } catch (authErr) {
         console.warn("[createUserDocument] Could not resolve phone number from auth:", authErr);
       }
+    }
+
+    if (existing.exists) {
+      // Returning user landing in /onboarding — Google and wallet sign-ins
+      // pre-create the user doc, so onboarding lands here for first-time
+      // setup. Update role + profile fields instead of silently no-op'ing,
+      // otherwise the user's onboarding choices never persist.
+      await adminDb.runTransaction(async (tx) => {
+        const profileRef = adminCollection("profiles").doc(uid);
+
+        const userPatch: Record<string, unknown> = {
+          role,
+          updatedAt: FieldValue.serverTimestamp(),
+        };
+        if (resolvedPhoneNumber) userPatch.phoneNumber = resolvedPhoneNumber;
+        tx.update(userRef, userPatch);
+
+        const profilePatch: Record<string, unknown> = {
+          updatedAt: FieldValue.serverTimestamp(),
+        };
+        if (profileData?.displayName) profilePatch.displayName = profileData.displayName;
+        if (profileData?.bio !== undefined) profilePatch.bio = profileData.bio;
+        if (profileData?.themes) profilePatch.themes = profileData.themes;
+        if (profileData?.services) profilePatch.services = profileData.services;
+        if (profileData?.gender) profilePatch.gender = profileData.gender;
+        if (profileData?.sexualOrientation) profilePatch.sexualOrientation = profileData.sexualOrientation;
+        if (profileData?.country) profilePatch.country = profileData.country;
+        if (profileData?.state) profilePatch.state = profileData.state;
+        if (profileData?.city) profilePatch.city = profileData.city;
+        if (profileData?.bodyBuild) profilePatch.bodyBuild = profileData.bodyBuild;
+        if (profileData?.dateOfBirth) profilePatch.dateOfBirth = profileData.dateOfBirth;
+        if (typeof profileData?.smoking === "boolean") profilePatch.smoking = profileData.smoking;
+        if (profileData?.services?.[0]?.price) profilePatch.retainer = profileData.services[0].price;
+        tx.update(profileRef, profilePatch);
+      });
+
+      return { success: true };
     }
 
     console.log("[createUserDocument] Setting user document...");

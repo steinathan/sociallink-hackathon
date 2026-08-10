@@ -19,16 +19,32 @@ export async function POST(req: Request) {
 
   const stream = createUIMessageStream({
     execute: async ({ writer }) => {
-      const result = await chatStream({
-        messages: uiMessages.map((m) => ({
-          role: (m.role === "user" ? "user" : "assistant") as "user" | "assistant",
-          content: extractText(m),
-        })),
-        userId: body.userId,
-      });
-      writer.merge(
-        result.toUIMessageStream({ originalMessages: uiMessages })
-      );
+      try {
+        const result = await chatStream({
+          messages: uiMessages.map((m) => ({
+            role: (m.role === "user" ? "user" : "assistant") as "user" | "assistant",
+            content: extractText(m),
+          })),
+          userId: body.userId,
+        });
+        writer.merge(
+          result.toUIMessageStream({ originalMessages: uiMessages })
+        );
+      } catch (err) {
+        // Surface the real error instead of "An error occurred." default.
+        // The AI SDK writes {type:"error", errorText: ...} to the UIMessage
+        // stream when onError in createUIMessageStream is invoked.
+        const message = err instanceof Error ? err.message : String(err);
+        // eslint-disable-next-line no-console
+        console.error("[api/ai/chat] streamText failed:", message);
+        throw err;
+      }
+    },
+    onError: (err) => {
+      // Forward the error message into the UIMessage stream error event
+      // so the client renders the actual cause instead of the generic default.
+      const message = err instanceof Error ? err.message : String(err);
+      return `AI stream failed: ${message}`;
     },
   });
 

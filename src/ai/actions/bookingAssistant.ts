@@ -171,6 +171,16 @@ export async function chat({
         }),
         execute: async ({ intent, limit }) => recommendProviders(intent, userId, limit),
       }),
+      navigateToConsultant: tool({
+        description:
+          "Return a URL the client should navigate to in order to view a Consultant's profile and start a booking. Call this when the user picks a Consultant from the recommendations.",
+        inputSchema: z.object({
+          providerId: z.string().describe("The Consultant's uid"),
+        }),
+        execute: async ({ providerId }) => ({
+          url: `/profile/${providerId}?intent=book`,
+        }),
+      }),
     },
     stopWhen: stepCountIs(5),
   });

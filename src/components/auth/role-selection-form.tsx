@@ -523,7 +523,7 @@ export function RoleSelectionForm() {
               variant="outline"
               onClick={handlePrevStep}
               disabled={loading}
-              className="btn-ghost-warm h-12 rounded-full px-6 text-[13px] font-medium"
+              className="btn-ghost-warm h-13 min-h-11 rounded-full px-6 text-[13px] font-medium"
             >
               <ArrowLeft className="mr-2 h-4 w-4" strokeWidth={1.5} />
               Back
@@ -532,7 +532,7 @@ export function RoleSelectionForm() {
           <Button
             onClick={step < totalSteps ? handleNextStep : submitForm}
             disabled={loading}
-            className="btn-coral h-12 flex-1 rounded-full text-[13px] font-semibold tracking-tight"
+            className="btn-coral h-13 min-h-11 flex-1 rounded-full px-6 text-[13px] font-semibold tracking-tight"
           >
             {loading ? (
               <Loader2 className="h-4 w-4 animate-spin" />

@@ -1,10 +1,28 @@
-import { anthropic } from "@ai-sdk/anthropic";
+import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 
 /**
  * Single LLM instance — server-side only.
- * ANTHROPIC_API_KEY must be present in env. Never import this from client code.
+ * OPENROUTER_API_KEY must be present in env. Never import this from client code.
+ * Model + fallbacks mirror ~/Projects/helptrovert's setup so the two projects
+ * share OpenRouter config. Override OPENROUTER_DEFAULT_MODEL to swap models.
  */
-export const llm = anthropic("claude-sonnet-4-5");
+const openrouter = createOpenRouter({
+  apiKey: process.env.OPENROUTER_API_KEY,
+  appName: "SocialLink",
+  appUrl: process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
+});
+
+export const OPENROUTER_FALLBACK_MODELS: string[] = (() => {
+  try {
+    return JSON.parse(process.env.OPENROUTER_FALLBACK_MODELS ?? "[]");
+  } catch {
+    return [];
+  }
+})();
+
+export const llm = openrouter(
+  process.env.OPENROUTER_DEFAULT_MODEL ?? "qwen/qwen3-next-80b-a3b-instruct:free"
+);
 
 // ─── System prompts ───────────────────────────────────────────────────────────
 

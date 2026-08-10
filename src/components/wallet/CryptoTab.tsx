@@ -159,6 +159,7 @@ function CryptoTabInner() {
           type="button"
           variant={panel === "fund" ? "default" : "outline"}
           onClick={() => setPanel(panel === "fund" ? null : "fund")}
+          className="min-h-11 rounded-full px-6 whitespace-nowrap"
         >
           <ArrowDownToLine className="h-4 w-4" />
           Fund with USDC
@@ -167,6 +168,7 @@ function CryptoTabInner() {
           type="button"
           variant={panel === "withdraw" ? "default" : "outline"}
           onClick={() => setPanel(panel === "withdraw" ? null : "withdraw")}
+          className="min-h-11 rounded-full px-6 whitespace-nowrap"
         >
           <ArrowUpFromLine className="h-4 w-4" />
           Withdraw
