@@ -408,6 +408,11 @@ export async function cancelBooking(
     const decoded = await adminAuth.verifyIdToken(idToken);
     const uid = decoded.uid;
 
+    // Captured for the post-txn notification to the other party.
+    let otherPartyUid: string | null = null;
+    let cancelledByMember = false;
+    let priorStatus = "";
+
     await adminDb.runTransaction(async (tx) => {
       const bookingRef = adminCollection("bookings").doc(bookingId);
       const snap = await tx.get(bookingRef);
@@ -423,6 +428,10 @@ export async function cancelBooking(
       if (!["REQUESTED", "ACCEPTED"].includes(booking.status)) {
         throw new Error("Cannot cancel this booking at its current status.");
       }
+
+      otherPartyUid = booking.memberId === uid ? booking.consultantId : booking.memberId;
+      cancelledByMember = booking.memberId === uid;
+      priorStatus = booking.status;
 
       const memberRef = adminCollection("users").doc(booking.memberId);
       const amountLocked = booking.amountLocked as number;
@@ -456,6 +465,19 @@ export async function cancelBooking(
         tx.update(chatRef, { isActive: false });
       }
     });
+
+    if (otherPartyUid) {
+      const declined = priorStatus === "REQUESTED" && !cancelledByMember;
+      await sendNotification(
+        otherPartyUid,
+        "BOOKING_CANCELLED",
+        declined ? "Session Declined" : "Session Cancelled",
+        declined
+          ? "Your session request was declined. Your escrow has been refunded."
+          : "This session was cancelled.",
+        bookingId
+      );
+    }
 
     return { success: true };
   } catch (err: unknown) {

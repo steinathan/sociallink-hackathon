@@ -2,6 +2,7 @@ import { Metadata } from "next";
 import Link from "next/link";
 import { BadgeCheck, Globe2, ShieldCheck, Zap } from "lucide-react";
 import { PhoneAuthForm } from "@/components/auth/phone-auth-form";
+import { EmailSignInForm } from "@/components/auth/email-sign-in-form";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { LogoFull } from "@/components/layout/logo";
 import { LoginPageClient } from "@/components/auth/login-page-client";
@@ -129,7 +130,7 @@ export default function LoginPage() {
                 Sign in to continue
               </h2>
               <p className="mt-4 text-[14px] leading-[1.65] text-muted-foreground">
-                Connect your OKX Wallet for <span className="font-semibold text-foreground">onchain USDC escrow</span> and our <span className="font-semibold text-foreground">AI Booking Agent</span> — 0 gas, settled on X Layer. Or sign in with your phone below.
+                Connect your OKX Wallet for <span className="font-semibold text-foreground">onchain USDC escrow</span> and our <span className="font-semibold text-foreground">AI Booking Agent</span> — 0 gas, settled on X Layer. Or sign in with your phone or email below.
               </p>
             </div>
 
@@ -144,6 +145,16 @@ export default function LoginPage() {
             </div>
 
             <PhoneAuthForm variant="light" compact />
+
+            <div className="relative my-6 flex items-center gap-3">
+              <div className="h-px flex-1 bg-border" />
+              <span className="text-[10.5px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
+                or with email
+              </span>
+              <div className="h-px flex-1 bg-border" />
+            </div>
+
+            <EmailSignInForm />
 
             {/*
               ponytail: Google sign-in hidden per hackathon positioning.

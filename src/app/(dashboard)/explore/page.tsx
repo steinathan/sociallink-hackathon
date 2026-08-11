@@ -117,11 +117,19 @@ export default function ExplorePage() {
           return;
         }
         const profilesRef = getScopedCollectionRef(db, "profiles");
-        const q = selectedTheme
-          ? query(profilesRef, where("uid", "in", consultantUids), where("themes", "array-contains", selectedTheme), limit(100))
-          : query(profilesRef, where("uid", "in", consultantUids), limit(100));
-        const snap = await getDocs(q);
-        setConsultants(snap.docs.map((d) => ({ uid: d.id, ...d.data() } as Profile)));
+        // Firestore `in` caps at 30 values per query; the seed ships 200
+        // consultants, so split the uid list into chunks and merge.
+        const IN_LIMIT = 30;
+        const found: Profile[] = [];
+        for (let i = 0; i < consultantUids.length; i += IN_LIMIT) {
+          const chunk = consultantUids.slice(i, i + IN_LIMIT);
+          const q = selectedTheme
+            ? query(profilesRef, where("uid", "in", chunk), where("themes", "array-contains", selectedTheme), limit(100))
+            : query(profilesRef, where("uid", "in", chunk), limit(100));
+          const snap = await getDocs(q);
+          found.push(...snap.docs.map((d) => ({ uid: d.id, ...d.data() } as Profile)));
+        }
+        setConsultants(found);
       } catch (err) {
         console.error("Failed to fetch consultants", err);
       } finally {

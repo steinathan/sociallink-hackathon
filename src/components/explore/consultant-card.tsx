@@ -105,6 +105,11 @@ export function ConsultantCard({ profile, distance }: ConsultantCardProps) {
           </h3>
 
           <div className="mt-1.5 flex flex-wrap items-center gap-3 text-[12px] text-muted-foreground">
+            {profile.gender && (
+              <span className="rounded-full border border-foreground/[0.08] bg-muted px-2 py-0.5 text-[10.5px] font-medium text-muted-foreground">
+                {profile.gender}
+              </span>
+            )}
             {profile.locationLabel && (
               <span className="flex items-center gap-1">
                 <MapPin className="h-3 w-3 text-primary/70" strokeWidth={1.5} />
