@@ -17,6 +17,15 @@ nothing material and 0-gas USDT/USDC transfers via OKX Wallet are free.
 - OKX testnet faucet (OKB): https://web3.okx.com/xlayer/faucet
 - Testnet USDC (Circle official): `0xDec90b78111Ba2fc6FC6d84d8B9ec159A2d4b9B3`
 
+**Build from a fresh clone** (`lib/` is gitignored — submodules are not vendored):
+```bash
+cd contracts
+forge install foundry-rs/forge-std
+forge install OpenZeppelin/openzeppelin-contracts
+forge build
+forge test   # 21/21 pass
+```
+
 ---
 
 ## Architecture
